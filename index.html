@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸运大抽奖</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00, 0 0 60px #ff4500;
+            margin-bottom: 50px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00, 0 0 60px #ff4500;
+            }
+            to {
+                text-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00, 0 0 90px #ff4500, 0 0 120px #ff0000;
+            }
+        }
+
+        /* 静音开关 */
+        .sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(180deg, #4a4a6a 0%, #3a3a5a 100%);
+            border: 3px solid #ffd700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.8rem;
+            z-index: 100;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .sound-toggle.muted {
+            opacity: 0.5;
+            filter: grayscale(50%);
+        }
+
+        .slot-machine {
+            background: linear-gradient(180deg, #2a2a4a 0%, #1a1a3a 100%);
+            border-radius: 20px;
+            padding: 40px 60px;
+            margin: 0 auto 40px;
+            width: 380px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 4px solid #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5), inset 0 0 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slot-machine::before,
+        .slot-machine::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+        }
+
+        .slot-machine::before {
+            top: 0;
+        }
+
+        .slot-machine::after {
+            bottom: 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+        }
+
+        .prize-display {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prize-display.rolling {
+            animation: roll 0.1s linear infinite;
+        }
+
+        @keyframes roll {
+            0% { transform: translateY(-20px); opacity: 0.5; }
+            50% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(20px); opacity: 0.5; }
+        }
+
+        .draw-button {
+            font-size: 1.8rem;
+            padding: 20px 60px;
+            background: linear-gradient(180deg, #ff6b6b 0%, #ee5a5a 50%, #dd4a4a 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4), 0 3px 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .draw-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s ease;
+        }
+
+        .draw-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .draw-button:hover::before {
+            left: 100%;
+        }
+
+        .draw-button:active {
+            transform: translateY(-1px);
+        }
+
+        .draw-button:disabled {
+            background: linear-gradient(180deg, #666 0%, #555 50%, #444 100%);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .result {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-top: 30px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .result.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .result.win {
+            background: linear-gradient(180deg, #ffd700 0%, #ffaa00 50%, #ff8800 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8));
+        }
+
+        .result.lose {
+            color: #888;
+            text-shadow: 0 0 10px rgba(136, 136, 136, 0.5);
+        }
+
+        /* 彩带特效 */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            animation: confetti-fall linear forwards;
+            z-index: 1000;
+        }
+
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* 背景星星 */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* 装饰灯泡 */
+        .lights {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ffd700;
+            box-shadow: 0 0 10px #ffd700;
+            animation: blink 0.5s ease-in-out infinite alternate;
+        }
+
+        .light:nth-child(odd) {
+            animation-delay: 0.25s;
+        }
+
+        @keyframes blink {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+
+        .emoji {
+            font-size: 5rem;
+            margin-top: 20px;
+            opacity: 0;
+            transition: all 0.5s ease;
+        }
+
+        .emoji.show {
+            opacity: 1;
+            animation: bounce 0.5s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 音效文件 -->
+    <!-- 滴答声：简短的机械点击声 -->
+    <audio id="tickSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2541/2541-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 中奖声：欢呼声/庆祝声 -->
+    <audio id="winSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 未中奖声 -->
+    <audio id="loseSound" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2542/2542-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="stars" id="stars"></div>
+
+    <!-- 静音开关 -->
+    <button class="sound-toggle" id="soundToggle" title="静音/开启声音">🔊</button>
+
+    <div class="container">
+        <h1>🎰 幸运大抽奖 🎰</h1>
+
+        <div class="slot-machine">
+            <div class="lights">
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+            </div>
+            <div class="prize-display" id="prizeDisplay">准备开始</div>
+        </div>
+
+        <button class="draw-button" id="drawButton">开始抽奖</button>
+
+        <div class="result" id="result"></div>
+        <div class="emoji" id="emoji"></div>
+    </div>
+
+    <script>
+        // 定义奖品及其概率
+        const prizePool = [
+            { name: '谢谢惠顾', weight: 80 },
+            { name: 'iPhone 16', weight: 6.67 },
+            { name: '特斯拉', weight: 6.67 },
+            { name: '咖啡', weight: 6.66 }
+        ];
+
+        const prizes = prizePool.map(p => p.name);
+
+        // 音效控制
+        let soundEnabled = true;
+        let audioInitialized = false;
+        const tickSound = document.getElementById('tickSound');
+        const winSound = document.getElementById('winSound');
+        const loseSound = document.getElementById('loseSound');
+
+        // 设置音量
+        tickSound.volume = 0.3;
+        winSound.volume = 0.5;
+        loseSound.volume = 0.3;
+
+        // 初始化音频（需要用户交互才能播放）
+        function initAudio() {
+            if (audioInitialized) return;
+
+            // 尝试播放并立即暂停，以初始化音频上下文
+            const sounds = [tickSound, winSound, loseSound];
+            sounds.forEach(sound => {
+                sound.play().then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                }).catch(() => {});
+            });
+
+            audioInitialized = true;
+        }
+
+        // 播放滴答声
+        function playTickSound() {
+            if (!soundEnabled) return;
+            tickSound.currentTime = 0;
+            tickSound.play().catch(() => {});
+        }
+
+        // 播放中奖音效
+        function playWinSound() {
+            if (!soundEnabled) return;
+            winSound.currentTime = 0;
+            winSound.play().catch(() => {});
+        }
+
+        // 播放未中奖音效
+        function playLoseSound() {
+            if (!soundEnabled) return;
+            loseSound.currentTime = 0;
+            loseSound.play().catch(() => {});
+        }
+
+        // 静音开关
+        const soundToggle = document.getElementById('soundToggle');
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+            soundToggle.classList.toggle('muted', !soundEnabled);
+        });
+
+        // 根据权重随机抽取一个奖品
+        function drawPrize() {
+            const totalWeight = prizePool.reduce((sum, p) => sum + p.weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (const prize of prizePool) {
+                random -= prize.weight;
+                if (random <= 0) {
+                    return prize.name;
+                }
+            }
+            return prizePool[0].name;
+        }
+
+        // 创建背景星星
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // 创建彩带
+        function createConfetti() {
+            const colors = ['#ff6b6b', '#ffd700', '#4ecdc4', '#45b7d1', '#96ceb4', '#ff8b94', '#a8e6cf', '#ffd93d'];
+            const confettiCount = 150;
+
+            for (let i = 0; i < confettiCount; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    confetti.style.width = (Math.random() * 10 + 5) + 'px';
+                    confetti.style.height = (Math.random() * 10 + 5) + 'px';
+                    document.body.appendChild(confetti);
+
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 20);
+            }
+        }
+
+        // 主抽奖逻辑
+        const drawButton = document.getElementById('drawButton');
+        const prizeDisplay = document.getElementById('prizeDisplay');
+        const result = document.getElementById('result');
+        const emoji = document.getElementById('emoji');
+        let isDrawing = false;
+        let rollInterval;
+
+        drawButton.addEventListener('click', () => {
+            if (isDrawing) return;
+            isDrawing = true;
+            drawButton.disabled = true;
+
+            // 初始化音频（首次点击）
+            initAudio();
+
+            // 重置显示
+            result.classList.remove('show', 'win', 'lose');
+            emoji.classList.remove('show');
+            prizeDisplay.classList.add('rolling');
+
+            // 老虎机滚动效果 + 滴答声
+            let rollCount = 0;
+            rollInterval = setInterval(() => {
+                prizeDisplay.textContent = prizes[Math.floor(Math.random() * prizes.length)];
+                playTickSound(); // 播放滴答声
+                rollCount++;
+            }, 150); // 稍微放慢速度以配合滴答声
+
+            // 2秒后停止并显示结果
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                prizeDisplay.classList.remove('rolling');
+
+                const winner = drawPrize();
+                prizeDisplay.textContent = winner;
+
+                // 显示结果并播放对应音效
+                if (winner === '谢谢惠顾') {
+                    result.textContent = '😢 再接再厉！';
+                    result.className = 'result show lose';
+                    emoji.textContent = '💔';
+                    emoji.classList.add('show');
+                    playLoseSound();
+                } else {
+                    result.textContent = '🎉 恭喜中奖！ 🎉';
+                    result.className = 'result show win';
+                    emoji.textContent = '🏆';
+                    emoji.classList.add('show');
+                    createConfetti();
+                    playWinSound();
+                }
+
+                isDrawing = false;
+                drawButton.disabled = false;
+            }, 2000);
+        });
+
+        // 初始化
+        createStars();
+    </script>
+</body>
+</html>
